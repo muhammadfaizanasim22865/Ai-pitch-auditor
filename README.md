@@ -1,139 +1,502 @@
-# AI Pitch Auditor — FastAPI Backend
+# 🎙️ AI Pitch Auditor
 
-An AI-powered investor pitch verification API. Upload founder pitch audio and
-get back the transcript, extracted factual claims, evidence-based verdicts,
-a credibility score, and investor-style cross-examination questions.
+> **Don't just hear the pitch. Verify it.**
 
-This is the FastAPI backend, converted from an earlier Streamlit prototype.
-The original Streamlit UI (`app.py`, `.streamlit/`) is kept in the repo for
-reference but is **not used** by this backend and is not required for
-deployment.
+AI Pitch Auditor is an AI-powered investor due-diligence tool that analyzes startup pitches, extracts factual claims, searches for supporting evidence, verifies those claims, calculates a credibility score, and generates investor-style cross-examination questions.
 
-## Pipeline
+Instead of simply summarizing what a founder says, AI Pitch Auditor asks:
 
+**"Can we actually verify this?"**
+
+---
+
+## 🚀 Live Demo
+
+### Frontend
+
+**https://ai-pitch-auditor-fro-nhmx.bolt.host/**
+
+### Backend API
+
+**https://ai-pitch-auditor.vercel.app/**
+
+### API Documentation
+
+**https://ai-pitch-auditor.vercel.app/docs**
+
+---
+
+## 💡 What Problem Does It Solve?
+
+Startup pitches are full of numbers and claims:
+
+* "We have 100,000 users."
+* "Revenue grew 40% this year."
+* "Customers reduced costs by 30%."
+* "We are generating $50,000 MRR."
+
+Investors need more than confident statements.
+
+AI Pitch Auditor turns a founder's pitch into a structured verification report by combining:
+
+🎙️ Speech-to-text
+🧠 AI claim extraction
+🔎 Web evidence search
+✅ Claim verification
+📊 Credibility scoring
+⚔️ Investor-style cross-examination
+
+The goal is not to automatically label unsupported claims as false.
+
+**Absence of evidence ≠ evidence of falsehood.**
+
+Claims that cannot be independently verified are marked **Unverified**.
+
+---
+
+# 🔄 How It Works
+
+```text
+        Founder Pitch
+              │
+              ▼
+    ┌─────────────────────┐
+    │ Audio Recording /   │
+    │ Audio Upload        │
+    └──────────┬──────────┘
+               │
+               ▼
+       🎙️ Speech-to-Text
+          Groq Whisper
+               │
+               ▼
+       🧠 Claim Extraction
+          Groq LLM
+               │
+               ▼
+       🔎 Evidence Search
+            Tavily
+               │
+               ▼
+       ✅ Claim Verification
+          Groq LLM
+               │
+       ┌───────┼────────┐
+       ▼       ▼        ▼
+   Supported  Mixed  Contradicted
+               │
+               └───────┐
+                       ▼
+                  Unverified
+                       │
+                       ▼
+             📊 Credibility Score
+                       │
+                       ▼
+             ⚔️ Cross-Examiner
+                  Questions
+                       │
+                       ▼
+              Investor Report
 ```
-Audio upload
-  → Speech-to-text            (services/stt_service.py, Groq Whisper)
-  → Claim extraction          (services/claim_extractor.py, Groq LLM)
-  → Evidence search            (services/search_service.py, Tavily)
-  → Claim verification         (services/fact_checker.py, Groq LLM)
-      → TRUE | FALSE | MIXED | UNVERIFIED
-  → Cross-examiner questions   (services/cross_examiner.py, Groq LLM)
-  → Credibility score           (computed in routes/analyze.py)
-  → JSON response
+
+---
+
+# ✨ Key Features
+
+## 🎙️ Record a Pitch
+
+Record a pitch directly from the browser using the microphone.
+
+The frontend uses the browser's `MediaRecorder` API and sends the recorded audio to the same analysis pipeline used for uploaded files.
+
+## 📁 Upload Audio
+
+Upload an existing pitch recording for analysis.
+
+Supported audio formats include:
+
+* MP3
+* WAV
+* M4A
+* Browser-recorded audio formats supported by the application
+
+## 📝 Automatic Transcription
+
+The system converts the founder's speech into text using **Groq Whisper**.
+
+## 🧠 Claim Extraction
+
+The AI identifies meaningful factual claims from the transcript and categorizes them, such as:
+
+* Traction
+* Growth
+* Financial
+* Performance
+* Market
+* Product
+
+## 🔎 Evidence Search
+
+Each factual claim is checked against publicly available web information using **Tavily**.
+
+The system collects:
+
+* Relevant sources
+* Source titles
+* Evidence snippets
+* URLs
+
+## ✅ Claim Verification
+
+Claims receive one of four verdicts:
+
+| Verdict             | Meaning                                      |
+| ------------------- | -------------------------------------------- |
+| 🟢 **Supported**    | Evidence supports the claim                  |
+| 🔴 **Contradicted** | Evidence conflicts with the claim            |
+| 🟡 **Mixed**        | Evidence partially supports the claim        |
+| ⚪ **Unverified**    | No sufficient independent evidence was found |
+
+### Important principle
+
+> **Unverified does not mean false.**
+
+A claim is only marked Contradicted when the available evidence actually conflicts with it.
+
+## 📊 Credibility Score
+
+The system generates a credibility score based on evidence-backed claim verdicts and confidence.
+
+Claims that are simply unverified are not treated as automatically false.
+
+## ⚔️ Cross-Examiner
+
+For each claim, AI Pitch Auditor generates investor-style follow-up questions.
+
+For example:
+
+> **Claim:** "We have 100,000 active users."
+
+The Cross-Examiner may ask:
+
+> "How do you define an active user, and what percentage of those users are monthly active?"
+
+This turns the system from a simple fact checker into a lightweight **AI due-diligence assistant**.
+
+## 📋 Investor Takeaway
+
+The final dashboard summarizes:
+
+* Overall credibility
+* Claim distribution
+* Important evidence
+* Unverified or contradicted claims
+* Cross-examination questions
+* Investor-focused observations
+
+---
+
+# 🏗️ Architecture
+
+```text
+┌──────────────────────────────────────────┐
+│              Frontend                    │
+│                                          │
+│      React + TypeScript + Vite           │
+│      Tailwind CSS                        │
+│                                          │
+│  Record Pitch  │  Upload Audio           │
+└────────────────┬─────────────────────────┘
+                 │
+                 │ POST /api/analyze
+                 ▼
+┌──────────────────────────────────────────┐
+│              FastAPI Backend             │
+│                Vercel                   │
+│                                          │
+│  ┌────────────────────────────────────┐  │
+│  │ Speech-to-Text                     │  │
+│  │ Claim Extraction                   │  │
+│  │ Evidence Search                    │  │
+│  │ Claim Verification                 │  │
+│  │ Credibility Scoring                │  │
+│  │ Cross-Examiner                     │  │
+│  └────────────────────────────────────┘  │
+└───────────────┬──────────────┬───────────┘
+                │              │
+                ▼              ▼
+          ┌───────────┐   ┌───────────┐
+          │   Groq    │   │  Tavily   │
+          │           │   │           │
+          │ Whisper   │   │ Web Search│
+          │ LLM       │   │ Evidence  │
+          └───────────┘   └───────────┘
 ```
 
-All core AI logic (STT, claim extraction, search, verification) is reused
-unchanged from the original project. See **Notes on scope** below for the
-two small additions made to satisfy the API contract.
+---
 
-## Project structure
+# 🛠️ Tech Stack
 
-```
-AI-Pitch-Auditor-main/
-├── main.py                 # FastAPI app, CORS, error handlers
+### Frontend
+
+* React
+* TypeScript
+* Vite
+* Tailwind CSS
+* Browser MediaRecorder API
+
+### Backend
+
+* Python
+* FastAPI
+* Vercel Serverless Functions
+
+### AI
+
+* Groq Whisper
+* Groq LLM
+* `openai/gpt-oss-120b`
+
+### Evidence Search
+
+* Tavily
+
+### Deployment
+
+* **Frontend:** Bolt
+* **Backend:** Vercel
+* **Source Control:** GitHub
+
+---
+
+# 📁 Project Structure
+
+```text
+Ai-pitch-auditor/
+│
 ├── api/
-│   └── index.py             # Vercel serverless entrypoint (imports main:app)
-├── config.py                 # Env var loading (unchanged, + FRONTEND_URL/limits)
+│   └── index.py                 # Vercel serverless entrypoint
+│
 ├── routes/
-│   ├── health.py             # GET /api/health
-│   └── analyze.py            # POST /api/analyze
-├── services/                 # Reused from the original project
-│   ├── stt_service.py
-│   ├── claim_extractor.py
-│   ├── search_service.py
-│   ├── fact_checker.py
-│   └── cross_examiner.py     # NEW — see "Notes on scope"
-├── requirements.txt
-├── vercel.json
-├── .env.example
-├── .gitignore
-├── test_pitch.mp3            # Sample audio for manual testing
-├── app.py                    # Legacy Streamlit UI (unused by the API)
-└── .streamlit/                # Legacy Streamlit config (unused by the API)
+│   ├── __init__.py
+│   ├── analyze.py               # Main pitch analysis endpoint
+│   └── health.py                # Health check endpoint
+│
+├── services/
+│   ├── __init__.py
+│   ├── stt_service.py           # Speech-to-text
+│   ├── claim_extractor.py       # Claim extraction
+│   ├── search_service.py        # Tavily evidence search
+│   ├── fact_checker.py          # Claim verification
+│   └── cross_examiner.py        # Investor questions
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── AnalysisProgress.tsx
+│   │   │   ├── ClaimCard.tsx
+│   │   │   ├── CredibilityScore.tsx
+│   │   │   ├── CrossExaminer.tsx
+│   │   │   ├── ErrorState.tsx
+│   │   │   ├── Header.tsx
+│   │   │   ├── InvestorTakeaway.tsx
+│   │   │   ├── LandingPage.tsx
+│   │   │   ├── RecordPitch.tsx
+│   │   │   ├── ResultsDashboard.tsx
+│   │   │   └── UploadArea.tsx
+│   │   ├── api.ts
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   ├── main.tsx
+│   │   └── types.ts
+│   │
+│   ├── public/
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── ...
+│
+├── main.py                      # FastAPI application
+├── config.py                    # Environment configuration
+├── requirements.txt             # Python dependencies
+├── vercel.json                  # Vercel configuration
+├── .env.example                 # Environment variable template
+├── README.md
+└── test_pitch.mp3               # Sample pitch audio
 ```
 
-## Local setup
+---
 
-1. **Create a virtual environment**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate      # Windows: venv\Scripts\activate
-   ```
+# ⚙️ Local Development
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## 1. Clone the repository
 
-3. **Configure environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-   Then edit `.env` and fill in your real keys:
-   ```env
-   GROQ_API_KEY=your_real_groq_key
-   TAVILY_API_KEY=your_real_tavily_key
-   FRONTEND_URL=http://localhost:3000
-   ```
-   `.env` is git-ignored — never commit it.
-
-4. **Run the API locally**
-   ```bash
-   uvicorn main:app --reload --port 8000
-   ```
-
-5. **Verify**
-   - `GET http://127.0.0.1:8000/api/health` → `{"status": "ok"}`
-   - `http://127.0.0.1:8000/docs` → interactive Swagger UI
-   - Test `/api/analyze` with the included sample:
-     ```bash
-     curl -X POST http://127.0.0.1:8000/api/analyze \
-       -F "audio=@test_pitch.mp3;type=audio/mpeg"
-     ```
-
-## API contract
-
-### `GET /api/health`
-```json
-{ "status": "ok" }
+```bash
+git clone https://github.com/muhammadfaizanasim22865/Ai-pitch-auditor.git
+cd Ai-pitch-auditor
 ```
 
-### `POST /api/analyze`
-`multipart/form-data`, one field:
+---
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `audio` | file | yes | `.mp3`, `.wav`, or `.m4a`, max 10 MB |
+## 2. Backend Setup
 
-**Success response `200`:**
+Create a Python virtual environment:
+
+### Windows
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+### macOS / Linux
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 3. Configure Environment Variables
+
+Create a `.env` file from the example:
+
+### Windows PowerShell
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Then add your API keys:
+
+```env
+GROQ_API_KEY=your_groq_api_key
+TAVILY_API_KEY=your_tavily_api_key
+FRONTEND_URL=http://localhost:5173
+```
+
+**Never commit `.env` or expose API keys in the frontend.**
+
+---
+
+## 4. Run the Backend
+
+```powershell
+python -m uvicorn main:app --reload --port 8000
+```
+
+The API will be available at:
+
+```text
+http://127.0.0.1:8000
+```
+
+Swagger documentation:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+Health check:
+
+```text
+http://127.0.0.1:8000/api/health
+```
+
+---
+
+# 🖥️ Frontend Setup
+
+Open a second terminal:
+
+```powershell
+cd frontend
+```
+
+Install dependencies:
+
+```powershell
+npm install
+```
+
+Create:
+
+```text
+frontend/.env
+```
+
+Add:
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+Run the frontend:
+
+```powershell
+npm run dev
+```
+
+The Vite development server will provide the local frontend URL.
+
+---
+
+# 🔌 API
+
+## Health Check
+
+```http
+GET /api/health
+```
+
+Response:
+
 ```json
 {
-  "transcript": "Hello investors, welcome to EcoTech Solutions...",
-  "claims": [
-    {
-      "id": 1,
-      "claim": "The company achieved two million dollars in ARR last year.",
-      "category": "Financial",
-      "verdict": "UNVERIFIED",
-      "verdict_label": "Unverified",
-      "confidence": 0.2,
-      "explanation": "No independent evidence was found to confirm this figure.",
-      "evidence": [
-        { "title": "...", "url": "...", "snippet": "..." }
-      ],
-      "sources": ["https://..."],
-      "cross_examiner_questions": [
-        "Can you share the audited revenue report supporting this figure?"
-      ]
-    }
-  ],
+  "status": "ok"
+}
+```
+
+---
+
+## Analyze Pitch
+
+```http
+POST /api/analyze
+Content-Type: multipart/form-data
+```
+
+Request field:
+
+| Field   | Type | Required |
+| ------- | ---- | -------- |
+| `audio` | File | Yes      |
+
+Example:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/analyze \
+  -F "audio=@test_pitch.mp3"
+```
+
+The response contains:
+
+```json
+{
+  "transcript": "...",
+  "claims": [],
   "claim_count": 4,
   "credibility_score": {
-    "score": 62.5,
+    "score": 82.5,
     "scale": "0-100",
-    "basis": "Weighted average over 3 claim(s) with evidence-backed verdicts.",
-    "counts": { "TRUE": 1, "FALSE": 0, "MIXED": 1, "UNVERIFIED": 1 }
+    "basis": "Weighted average..."
   },
   "metadata": {
     "processing_time_seconds": 8.42,
@@ -145,105 +508,216 @@ AI-Pitch-Auditor-main/
 }
 ```
 
-**Error responses** (`{"error": "..."}`):
+Each claim can include:
 
-| Status | Meaning |
-|---|---|
-| 400 | No audio provided, unsupported format, or empty/corrupt file |
-| 413 | Audio file exceeds the 10 MB limit |
-| 422 | Audio was readable but no speech could be transcribed |
-| 502 | STT, claim extraction, or verification service call failed |
-| 503 | Server is missing required API keys |
-| 500 | Unexpected server error |
+```json
+{
+  "id": 1,
+  "claim": "The company has 100,000 registered users.",
+  "category": "Traction",
+  "verdict": "UNVERIFIED",
+  "verdict_label": "Unverified",
+  "confidence": 0.82,
+  "explanation": "...",
+  "evidence": [],
+  "sources": [],
+  "cross_examiner_questions": []
+}
+```
 
-Error responses never include API keys or internal stack traces.
+---
 
-## Verdict semantics (unchanged from the original project)
+# 🧠 Verification Philosophy
 
-- `TRUE` / `FALSE` / `MIXED` / `UNVERIFIED` are produced exactly as before by
-  `fact_checker.py`. `verdict_label` (Supported / Contradicted / Mixed /
-  Unverified) is an additional display-friendly field layered on top for the
-  frontend — it does not change the verification rule.
-- **Absence of evidence does not mean a claim is false.** A claim with no
-  search evidence is `UNVERIFIED`, never `FALSE`, and is excluded from the
-  credibility score's denominator rather than penalized.
+AI Pitch Auditor intentionally follows a conservative verification philosophy.
 
-## CORS
+### Supported
 
-Configured via `FRONTEND_URL`. `http://localhost:3000` is always allowed in
-addition, so local frontend development works regardless of what
-`FRONTEND_URL` is set to in your environment.
+Reliable evidence supports the claim.
 
-## Deploying to Vercel
+### Contradicted
 
-1. **Install the Vercel CLI** (if you don't have it):
-   ```bash
-   npm install -g vercel
-   ```
+Reliable evidence directly conflicts with the claim.
 
-2. **Log in** (interactive — requires your browser):
-   ```bash
-   vercel login
-   ```
+### Mixed
 
-3. **Link and deploy** from the project root:
-   ```bash
-   vercel
-   ```
-   Follow the prompts to link/create the project.
+Evidence supports some parts of the claim but conflicts with or fails to support others.
 
-4. **Set environment variables** in the Vercel dashboard (Project → Settings
-   → Environment Variables), or via CLI:
-   ```bash
-   vercel env add GROQ_API_KEY
-   vercel env add TAVILY_API_KEY
-   vercel env add FRONTEND_URL
-   ```
+### Unverified
 
-5. **Deploy to production:**
-   ```bash
-   vercel --prod
-   ```
+There is not enough independent evidence to establish whether the claim is true.
 
-6. **Verify:**
-   ```bash
-   curl https://YOUR-VERCEL-DOMAIN/api/health
-   ```
-   and open `https://YOUR-VERCEL-DOMAIN/docs`.
+This distinction is important because:
 
-> This step requires your Vercel account and browser-based login, so it
-> can't be completed on your behalf — see the final report for exactly
-> where this was left off.
+```text
+No evidence
+     ≠
+False claim
+```
 
-## Frontend integration notes (for Lovable or any frontend)
+The system should help investors identify where **due diligence is required**, rather than pretending that a search engine can magically prove everything.
 
-- Base URL: your Vercel deployment domain.
-- Send `POST /api/analyze` as `multipart/form-data` with a single `audio`
-  file field — not JSON.
-- Set the frontend's own `FRONTEND_URL` value in the backend's Vercel env
-  vars so CORS allows it.
-- All responses are JSON; check for a top-level `"error"` key to detect
-  failures instead of relying solely on HTTP status.
+---
 
-## Notes on scope (please read)
+# 🔐 Security
 
-The original codebase's fact-checking pipeline stops at a per-claim verdict
-(`TRUE`/`FALSE`/`MIXED`/`UNVERIFIED`) with confidence, explanation, and
-sources — there was no credibility-scoring code and no cross-examiner
-question generator anywhere in the project, even though the task
-description mentions both. To deliver a complete `/api/analyze` response
-without inventing new core verification behavior, two small additive pieces
-were built:
+API keys are kept on the backend.
 
-1. **`services/cross_examiner.py`** — a new service, structurally identical
-   to `fact_checker.py` (same Groq client pattern), that generates 1–3
-   follow-up questions per claim. If it fails, it returns `[]` and never
-   breaks the rest of the response.
-2. **Credibility score** — computed in `routes/analyze.py` from the
-   verdicts/confidences already returned by the unmodified
-   `fact_checker.py`. It's a simple, transparent weighted average — it does
-   not change how any individual claim is verified.
+The frontend does **not** contain:
 
-Neither change touches `stt_service.py`, `claim_extractor.py`,
-`search_service.py`, or `fact_checker.py`, which are reused exactly as they
-were.
+* `GROQ_API_KEY`
+* `TAVILY_API_KEY`
+
+Environment variables should be configured through:
+
+* `.env` for local development
+* Vercel Environment Variables for production
+
+Never commit:
+
+```text
+.env
+```
+
+to GitHub.
+
+---
+
+# ☁️ Production Deployment
+
+## Backend
+
+The FastAPI backend is deployed on **Vercel**.
+
+Production API:
+
+```text
+https://ai-pitch-auditor.vercel.app
+```
+
+Required environment variables:
+
+```text
+GROQ_API_KEY
+TAVILY_API_KEY
+FRONTEND_URL
+```
+
+`FRONTEND_URL` should point to the deployed frontend so FastAPI CORS allows browser requests.
+
+---
+
+## Frontend
+
+The current frontend is deployed through **Bolt**.
+
+Production frontend:
+
+```text
+https://ai-pitch-auditor-fro-nhmx.bolt.host/
+```
+
+The frontend communicates with the deployed FastAPI backend through:
+
+```text
+POST https://ai-pitch-auditor.vercel.app/api/analyze
+```
+
+---
+
+# 🧪 Testing
+
+The system has been tested end-to-end with both supported input flows:
+
+```text
+🎙️ Record Pitch
+       ↓
+   Analyze Pitch
+       ↓
+    FastAPI API
+       ↓
+   AI Pipeline
+       ↓
+   Results Dashboard
+```
+
+and:
+
+```text
+📁 Upload Audio
+       ↓
+   Analyze Pitch
+       ↓
+    FastAPI API
+       ↓
+   AI Pipeline
+       ↓
+   Results Dashboard
+```
+
+Both browser recording and uploaded audio are supported by the current frontend.
+
+---
+
+# 🎯 Hackathon MVP
+
+The current MVP focuses on the core investor workflow:
+
+* [x] Browser pitch recording
+* [x] Audio upload
+* [x] Speech-to-text
+* [x] Claim extraction
+* [x] Web evidence search
+* [x] Claim verification
+* [x] Credibility scoring
+* [x] Evidence display
+* [x] Cross-examiner questions
+* [x] Investor takeaway
+* [x] FastAPI backend
+* [x] Production deployment
+* [x] Full-stack GitHub repository
+
+---
+
+# 🔮 Future Improvements
+
+Potential future versions could include:
+
+* 📝 Direct text pitch analysis
+* 📄 Pitch deck/PDF analysis
+* 🏢 Company/entity-aware evidence matching
+* 📈 Historical startup metrics tracking
+* 🧾 Financial statement verification
+* 🔗 Source credibility/ranking
+* 👥 Investor collaboration
+* 📊 Portfolio-level startup comparison
+* 🧠 More advanced multi-agent due-diligence workflows
+* 🔐 Authentication and persistent reports
+
+---
+
+# 👥 Team
+
+**AI Pitch Auditor** was developed as a team project for **Pak Angels Cohort 11**.
+
+The project combines AI engineering, backend development, frontend development, web research, and investor-focused product design into a single due-diligence workflow.
+
+---
+
+# 📜 License
+
+This project is developed as a hackathon/project prototype.
+
+Add an explicit open-source license here if the project is later intended to be publicly licensed.
+
+---
+
+## ⭐ Why AI Pitch Auditor?
+
+Investors don't just need to hear what a startup claims.
+
+They need to know:
+
+> **What can actually be verified?**
+
+AI Pitch Auditor turns a spoken startup pitch into an evidence-backed verification report, helping investors spend less time manually checking claims and more time asking the questions that matter.
